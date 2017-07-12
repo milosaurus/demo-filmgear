@@ -11,18 +11,16 @@ from decimal import Decimal
 from datetime import datetime
 
 # External Imports
-from forex_python.converter import CurrencyRates
 import requests
-from bs4 import BeautifulSoup
 
 
 _POUNDS_TO_KG = 2.205
 
-class ShopifyProduct(object):
+class ShopifyProduct(json.JSONEncoder):
     """
     The Shopify Product definition
     """
-
+    
     # ParseHUB -> Shopify field map
     __PRODUCT_KEY_MAP = {
         'vendor': 'vendor',
@@ -51,6 +49,7 @@ class ShopifyProduct(object):
         # Manually set fields
         if 'breadcrumbs' in product_dict.keys():
             setattr(self, 'product_type', self.__get_product_type(product_dict['breadcrumbs']))
+            setattr(self, 'tags', self.__get_tag_list(product_dict['breadcrumbs']))
 
         # setattr(self, 'handle', self.__title_to_handle(getattr(self, 'title')))
         setattr(self, 'published_scope', 'global')
@@ -61,7 +60,9 @@ class ShopifyProduct(object):
         # published_at?
 
         # Set variants
-        setattr(self, 'variants', self.__set_product_variants(product_dict))
+        variants = []
+        variants.append(self.__set_product_variants(product_dict))
+        setattr(self, 'variants', variants)
 
         # Set Options
         setattr(self, 'options', self.__set_product_options(product_dict))
@@ -80,12 +81,24 @@ class ShopifyProduct(object):
         """
         Get product type from Breadcrumbs
         """
-        # TODO: Revisit this with Rob + Rust
-        # if len(breadcrumbs) >= 4:
-        #     return breadcrumbs[len(breadcrumbs) - 3]['breadcrumb']
-        # else:
         return breadcrumbs[len(breadcrumbs) - 2]['breadcrumb']
 
+
+    __EXCLUDED_BREADCRUMBS = [
+        'Home'
+    ]
+
+    def __get_tag_list(self, breadcrumbs):
+        """
+        Get tags from Breadcrumbs
+        """
+        tags = ''
+
+        for breadcrumb in breadcrumbs:
+            if breadcrumb['breadcrumb'] not in self.__EXCLUDED_BREADCRUMBS:
+                tags = tags + breadcrumb['breadcrumb'] + ', '
+
+        return tags[:-2]
 
     def __title_to_handle(self, title):
         """
@@ -149,21 +162,24 @@ class ShopifyProduct(object):
         # Weight conversion 
         if 'weight' in product_dict.keys():
             # Do weight conversion and add it to the product
-            product_weight = self.__weight_conversion(product_dict['weight'], product_dict['unit'])
-            product_variants['grams'] = int(product_weight * 1000)
-            product_variants['weight'] = product_weight
-            product_variants['weight_unit'] = 'kg'
+
+            if product_dict['weight'] != "":
+                product_weight = self.__weight_conversion(product_dict['weight'], product_dict['unit'])
+                product_variants['grams'] = int(product_weight * 1000)
+                product_variants['weight'] = product_weight
+                product_variants['weight_unit'] = 'kg'
 
         # created_at? Shopify fields
         # updated_at?
         product_variants['requires_shipping'] = True
         product_variants['inventory_quantity'] = 0 # Set to 0 or 1
         product_variants['old_inventory_quantity'] = 0 # Set to 0 or 1
+        product_variants['inventory_policy'] = 'continue'
 
         # Price calculation:
         if 'price' in product_dict.keys():
             product_variants['price'] = self.__calculate_price(product_dict['price'], product_weight)
-
+            
         return product_variants
 
     def __weight_conversion(self, weight, unit):
@@ -357,27 +373,26 @@ def main(argv):
     shopify_products = []
 
     # Iterate through each URL in the file
-    # for url in data['urls']:
-    #     for product in url['products']:
-    #         shop_product = ShopifyProduct(product)
-    #         shopify_products.append(shop_product)
-
+    for url in data['urls']:
+        for product in url['products']:
+            shop_product = ShopifyProduct(product)
+            shopify_products.append(shop_product)
     
-    shop_product = ShopifyProduct(data['urls'][0]['products'][0])
-    shopify_products.append(shop_product)
+    # shop_product = ShopifyProduct(data['urls'][0]['products'][0])
+    # shopify_products.append(shop_product)
 
-    jsonstring = '['
+    jsonstring = '{\"products\": ['
     for product in shopify_products:
         jsonstring = jsonstring + json.dumps(product.__dict__) + ','
-    jsonstring = jsonstring[:-1] + ']'
-        
+    jsonstring = jsonstring[:-1] + ']}'
+
     filename = 'shopify_' + datetime.now().strftime("%Y-%m-%d_%H%M%S") + '.json'
 
     outfile = open(filename, 'w')
     outfile.write(json.dumps(json.loads(jsonstring), indent=4, sort_keys=True))
     outfile.close()
 
-    print('[INFO] Time Ended: ' + str(datetime.now()))
+    print('[INFO] Time Ended: ' + str(datetime.now()))  
     print('[DEBUG] File parsing complete')
 
 if __name__ == "__main__":
