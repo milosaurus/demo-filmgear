@@ -2,7 +2,6 @@
 A Simple JSON parsing module for demonstration to FilmGear
 """
 import math
-import pickle
 import sys
 import getopt
 import json
@@ -20,7 +19,7 @@ class ShopifyProduct(json.JSONEncoder):
     """
     The Shopify Product definition
     """
-    
+
     # ParseHUB -> Shopify field map
     __PRODUCT_KEY_MAP = {
         'vendor': 'vendor',
@@ -39,10 +38,10 @@ class ShopifyProduct(json.JSONEncoder):
         # Automatically pulled fields
         for key in keys:
 
-            # Check whether value is in the product data            
+            # Check whether value is in the product data
             if key in product_dict:
                 setattr(
-                    self, 
+                    self,
                     self.__PRODUCT_KEY_MAP.get(key),
                     product_dict[key])
 
@@ -81,6 +80,7 @@ class ShopifyProduct(json.JSONEncoder):
         """
         Get product type from Breadcrumbs
         """
+        print(breadcrumbs)
         return breadcrumbs[len(breadcrumbs) - 2]['breadcrumb']
 
 
@@ -110,21 +110,21 @@ class ShopifyProduct(json.JSONEncoder):
         return handle.lower()
 
     __MASTER_DEALER_LIST = [
-        'avenger', 
-        'smallhd', 
-        'wooden camera', 
-        'teradek', 
-        'paralinx', 
-        'atomos', 
-        'oconnor', 
-        'vinten', 
-        'sacthler', 
-        'litepanels', 
-        'offhollywood', 
-        'anton bauer', 
-        'core swx', 
-        'autocue', 
-        'autoscript', 
+        'avenger',
+        'smallhd',
+        'wooden camera',
+        'teradek',
+        'paralinx',
+        'atomos',
+        'oconnor',
+        'vinten',
+        'sacthler',
+        'litepanels',
+        'offhollywood',
+        'anton bauer',
+        'core swx',
+        'autocue',
+        'autoscript',
         'manfrotto'
     ]
 
@@ -137,10 +137,10 @@ class ShopifyProduct(json.JSONEncoder):
 
         if 'sku' in product_dict.keys():
             product_variants['sku'] = product_dict['sku']
-        
+
         if 'barcode' in product_dict.keys():
             product_variants['barcode'] = product_dict['barcode']
-        
+
         # Options
         product_variants['option1'] = 'Default Title'
         product_variants['option2']: None
@@ -159,7 +159,7 @@ class ShopifyProduct(json.JSONEncoder):
         # Initialisation
         product_weight = 0
 
-        # Weight conversion 
+        # Weight conversion
         if 'weight' in product_dict.keys():
             # Do weight conversion and add it to the product
 
@@ -179,12 +179,12 @@ class ShopifyProduct(json.JSONEncoder):
         # Price calculation:
         if 'price' in product_dict.keys():
             product_variants['price'] = self.__calculate_price(product_dict['price'], product_weight)
-            
+
         return product_variants
 
     def __weight_conversion(self, weight, unit):
         """
-        Helper method to convert weight from pounds to 
+        Helper method to convert weight from pounds to
         """
         product_weight = Decimal(str(weight))
         converted_weight = None
@@ -218,7 +218,7 @@ class ShopifyProduct(json.JSONEncoder):
         converted_price = total_price * currency_conversion_rate
 
         return round(converted_price, 2)
-        
+
     __FEDEX_CONVERSION_CHART = {
         0.0 : {
             0.0  : 0.0,
@@ -242,26 +242,26 @@ class ShopifyProduct(json.JSONEncoder):
             9.0  : 245.39136,
             9.5  : 251.65824
         },
-        10.0 : { 
+        10.0 : {
             10.0 : 257.92512,
             0.5: 5.89824
         },
-        21.0 : { 
+        21.0 : {
             21.0: 388.17792,
             0.5: 6.38976
         },
-        45.0 : { 
+        45.0 : {
             45.0 : 695.25504,
             0.5: 6.7584
         },
-        70.5 : { 
+        70.5 : {
             70.5: 1039.93344,
             1.0: 14.7456
         }
     }
     def __calcluate_fedex_rate(self, weight):
         """
-        Helper method to calculate the fedex rate for a given product's weight 
+        Helper method to calculate the fedex rate for a given product's weight
         """
         rounded_weight = math.ceil(weight * 2.0) / 2.0
         weight_keys = self.__FEDEX_CONVERSION_CHART.keys()
@@ -285,7 +285,7 @@ class ShopifyProduct(json.JSONEncoder):
             # Get remaining weight diff:
             remaining_weight = rounded_weight - index
 
-            # need to get this from the keys            
+            # need to get this from the keys
             weight_diff = 0.5
 
             weight_multiplier = remaining_weight / weight_diff
@@ -311,7 +311,7 @@ class ShopifyProduct(json.JSONEncoder):
         Sets the images in the shopify product
         """
         shopify_images = []
-    
+
         if 'images' not in product_dict:
             return None
 
@@ -322,9 +322,9 @@ class ShopifyProduct(json.JSONEncoder):
         for image in images:
             shopify_image = {}
             shopify_image['position'] = position
-        
+
             # TODO: get these properly
-            shopify_image['width'] = 500           
+            shopify_image['width'] = 500
             shopify_image['height'] = 500
 
             # TODO:
@@ -336,7 +336,7 @@ class ShopifyProduct(json.JSONEncoder):
 
             # Add it to the list of shopify images
             shopify_images.append(shopify_image)
-            
+
             # Increment position
             position+=1
 
@@ -346,6 +346,7 @@ def main(argv):
     """
     A basic method to showcase JSON parsing functionality
     """
+
     inputfile = ''
 
     try:
@@ -377,7 +378,7 @@ def main(argv):
         for product in url['products']:
             shop_product = ShopifyProduct(product)
             shopify_products.append(shop_product)
-    
+
     # shop_product = ShopifyProduct(data['urls'][0]['products'][0])
     # shopify_products.append(shop_product)
 
@@ -392,9 +393,8 @@ def main(argv):
     outfile.write(json.dumps(json.loads(jsonstring), indent=4, sort_keys=True))
     outfile.close()
 
-    print('[INFO] Time Ended: ' + str(datetime.now()))  
+    print('[INFO] Time Ended: ' + str(datetime.now()))
     print('[DEBUG] File parsing complete')
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
